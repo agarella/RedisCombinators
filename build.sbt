@@ -1,4 +1,4 @@
-name := "RedisCombinators"
+name := "RedisScalaCombinators"
 
 version := "1.0"
 
