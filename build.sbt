@@ -1,4 +1,4 @@
-name := "RedisClientCombinators"
+name := "RedisCombinators"
 
 version := "1.0"
 
