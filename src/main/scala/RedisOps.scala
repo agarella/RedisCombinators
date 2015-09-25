@@ -6,9 +6,9 @@ object RedisOps {
 
   implicit class Redis(redis: RedisClient) {
 
-    def set[A](kvs: List[(String, A)]) = if (kvs.nonEmpty) redis.mset(kvs: _*)
+    def multiSet[A](kvs: List[(String, A)]): Unit = if (kvs.nonEmpty) redis.mset(kvs: _*)
 
-    def del(ks: List[String]) = if (ks.nonEmpty) redis.del(ks.head, ks.tail: _*)
+    def multiDel(ks: List[String]): Unit = if (ks.nonEmpty) redis.del(ks.head, ks.tail: _*)
 
     def getKeys: List[String] = getKeys("*")
 
