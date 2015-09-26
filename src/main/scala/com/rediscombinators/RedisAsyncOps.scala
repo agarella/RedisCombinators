@@ -33,21 +33,21 @@ object RedisAsyncOps {
 
     def mapKeyAsync[B](pattern: String)(f: String => B): Future[List[B]] = {
       implicit val p: String = pattern
-      scanRedis(0, f).flatMap(nextScan(f))
+      scan(0, f).flatMap(combineScan(f))
     }
 
-    private def scan[B](cursor: Int, f: String => B)(implicit pattern: String): Future[List[B]] =
+    private def nextScan[B](cursor: Int, f: String => B)(implicit pattern: String): Future[List[B]] =
       if (cursor > 0)
-        scanRedis(cursor, f).flatMap(nextScan(f))
+        scan(cursor, f).flatMap(combineScan(f))
       else
         Future.successful(List.empty[B])
 
-    private def nextScan[B](f: (String) => B)(t: (Int, List[B]))(implicit pattern: String): Future[List[B]] = {
+    private def combineScan[B](f: (String) => B)(t: (Int, List[B]))(implicit pattern: String): Future[List[B]] = {
       val (cursor, vs) = t
-      scan(cursor, f).map(bs => vs |+| bs)
+      nextScan(cursor, f).map(bs => vs |+| bs)
     }
 
-    private def scanRedis[B](cursor: Int, f: String => B)(implicit pattern: String): Future[(Int, List[B])] = Future {
+    private def scan[B](cursor: Int, f: String => B)(implicit pattern: String): Future[(Int, List[B])] = Future {
       rc.scan(cursor, pattern).map { t =>
         val (cursorMaybe, vsMaybe) = t
         val cursor: Int = cursorMaybe.orZero
