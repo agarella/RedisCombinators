@@ -1,6 +1,7 @@
 package com.rediscombinators
 
 import com.redis.RedisClient
+import com.redis.serialization.{Parse, Format}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -10,7 +11,7 @@ object RedisAsyncOps {
 
   implicit class RedisAsync(rc: RedisClient) {
 
-    def getAsync[A](key: String): Future[Option[A]] = Future { rc.get[A](key) }
+    def getAsync[A](key: String)(implicit format: Format, parse: Parse[A]): Future[Option[A]] = Future { rc.get[A](key) }
 
     def delAsync(key: String): Unit = Future { rc.del(key) }
 
