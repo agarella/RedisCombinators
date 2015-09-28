@@ -1,21 +1,29 @@
 package com.rediscombinators
 
 import com.redis.RedisClient
-import com.redis.serialization.{Parse, Format}
+import com.redis.serialization.{Format, Parse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 import scalaz.Scalaz._
 
 object RedisAsyncOps {
 
   implicit class RedisAsync(rc: RedisClient) {
 
-    def getAsync[A](key: String)(implicit format: Format, parse: Parse[A]): Future[Option[A]] = Future { rc.get[A](key) }
+    def getAsync[A](key: String)(implicit format: Format, parse: Parse[A]): Future[A] =
+      Future { rc.get(key) }.flatMap { maybeA =>
+        val t = maybeA match {
+          case Some(a) => Success(a)
+          case None => Failure(new NoSuchElementException)
+        }
+        Future.fromTry(t)
+      }
 
     def delAsync(key: String): Unit = Future { rc.del(key) }
 
-    def mSetAsync[A](kvs: List[(String, A)]): Unit = Future { if (kvs.nonEmpty) rc.mset(kvs: _*) }
+    def mSetAsync[A](kvs: List[(String, A)]): Unit = Future { if (kvs.nonEmpty) rc.mset(kvs.toArray: _*) }
 
     def mDelAsync(ks: List[String]): Unit = Future { if (ks.nonEmpty) rc.del(ks.head, ks.tail: _*) }
 
@@ -49,9 +57,9 @@ object RedisAsyncOps {
 
     private def scan[B](cursor: Int, f: String => B)(implicit pattern: String): Future[(Int, List[B])] = Future {
       rc.scan(cursor, pattern).map { t =>
-        val (cursorMaybe, vsMaybe) = t
+        val (cursorMaybe, ks) = t
         val cursor: Int = cursorMaybe.orZero
-        val bs: List[B] = vsMaybe.map(vs => vs.flatten.map(key => f(key))).orZero
+        val bs: List[B] = ks.map(vs => vs.flatten.map(k => f(k))).orZero
         cursor -> bs
       }.orZero
     }

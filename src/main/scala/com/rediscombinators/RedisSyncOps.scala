@@ -36,9 +36,9 @@ object RedisSyncOps {
 
     private def scan[B](cursor: Int, f: String => B)(implicit pattern: String): (Int, List[B]) =
       rc.scan(cursor, pattern).map { t =>
-        val (cursorMaybe, bsMaybe) = t
+        val (cursorMaybe, ksMaybe) = t
         val newCursor = cursorMaybe.orZero
-        val bs = bsMaybe.map(vs => vs.flatten.map(key => f(key))).orZero
+        val bs = ksMaybe.map(vs => vs.flatten.map(k => f(k))).orZero
         newCursor -> bs
       }.orZero
 
