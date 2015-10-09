@@ -1,6 +1,7 @@
 package com.rediscombinators
 
 import com.redis.RedisClient
+import com.redis.serialization.{Format, Parse}
 
 import scalaz.Scalaz._
 
@@ -8,13 +9,19 @@ object RedisSyncOps {
 
   implicit class RedisSync(rc: RedisClient) {
 
+    def mGet[A](ks: List[String])(implicit format: Format, p: Parse[A]): List[A] =
+      if (ks.nonEmpty)
+        rc.mget(ks.head, ks.tail: _*).map(_.flatten).orZero
+      else
+        Nil
+
     def mSet[A](kvs: List[(String, A)]): Unit = if (kvs.nonEmpty) rc.mset(kvs: _*)
 
     def mDel(ks: List[String]): Unit = if (ks.nonEmpty) rc.del(ks.head, ks.tail: _*)
 
     def getKeys: List[String] = getKeys("*")
 
-    def getKeys(pattern: String): List[String] = mapKey("*")(identity)
+    def getKeys(pattern: String): List[String] = mapKey(pattern)(identity)
 
     def forEachKey(f: String => Unit): Unit = mapKey(f)
 
@@ -36,9 +43,9 @@ object RedisSyncOps {
 
     private def scan[B](cursor: Int, f: String => B)(implicit pattern: String): (Int, List[B]) =
       rc.scan(cursor, pattern).map { t =>
-        val (cursorMaybe, bsMaybe) = t
+        val (cursorMaybe, ksMaybe) = t
         val newCursor = cursorMaybe.orZero
-        val bs = bsMaybe.map(vs => vs.flatten.map(key => f(key))).orZero
+        val bs = ksMaybe.map(vs => vs.flatten.map(k => f(k))).orZero
         newCursor -> bs
       }.orZero
 

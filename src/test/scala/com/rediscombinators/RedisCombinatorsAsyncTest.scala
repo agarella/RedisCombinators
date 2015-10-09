@@ -9,12 +9,12 @@ import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
-class RedisCombinatorsTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
+class RedisCombinatorsAsyncTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
 
   val rcs = new RedisClientPool("127.0.0.1", 6379)
+  @volatile var done = false
 
-  feature ("getKeysAsync") {
-    @volatile var done = false
+  feature("getKeysAsync") {
     Given("a Redis client")
     When("storing a list of key-value pairs")
     val kvs = (1 to 100).map(x => s"$x" -> x).toList
@@ -32,11 +32,7 @@ class RedisCombinatorsTest extends FeatureSpec with GivenWhenThen with BeforeAnd
       }
     }
 
-    while (!done) { /** Block until done */ }
-  }
-
-  after {
-    rcs.withClient(_.flushall)
+    while (!done)(/** Block until done */)
   }
 
 }
