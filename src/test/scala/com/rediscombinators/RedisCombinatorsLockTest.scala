@@ -5,22 +5,42 @@ import java.util.UUID
 import com.redis.RedisClientPool
 import com.rediscombinators.RedisLockOps._
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfter, FeatureSpec, GivenWhenThen}
+import org.scalatest.{FeatureSpec, GivenWhenThen}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
+import scala.util.{Failure, Try}
 
-class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
+class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val rcs = new RedisClientPool("127.0.0.1", 6379)
+  val rcs = new RedisClientPool("localhost", 6379)
   @volatile var counter = 0
 
-  before {
-    println(s"Counter: $counter")
+  feature("RedisLock") {
+    Given("a Redis client")
+    val uuid = UUID.randomUUID().toString
+
+    When("acquiring locks")
+    Then("only one calculation should have the lock")
+    acquireLockAndPrintSomething(uuid)
+
+    When("a calculation throws an exception while having the lock")
+    acquireLockAndThrowException(uuid)
+
+    Then("no deadlock occurs")
+    acquireLockAndPrintSomething(uuid)
+
+    Try(Await.result(Future { while (counter < 3)(/** Block until done */) }, 10 seconds)) match {
+      case Failure(e) => fail("Test failed!", e)
+      case _          => ()
+    }
+    rcs.withClient(_.flushall)
   }
 
   def acquireLockAndPrintSomething(lock: Lock): Future[Unit] =
-    Future {
+  Future {
       rcs.withClient { client =>
         client.withLock(lock) { _ =>
           println("Acquired lock!")
@@ -33,7 +53,7 @@ class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with Befor
     }
 
   def acquireLockAndThrowException(lock: Lock): Future[Unit] =
-    Future {
+  Future {
       rcs.withClient { client =>
         client.withLock(lock) { _ =>
           println("Acquired lock")
@@ -45,22 +65,5 @@ class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with Befor
         }
       }
     }
-
-  feature("RedisLock") {
-    Given("a Redis client")
-
-    val uuid = UUID.randomUUID().toString
-
-    acquireLockAndPrintSomething(uuid)
-    acquireLockAndThrowException(uuid)
-    acquireLockAndPrintSomething(uuid)
-
-    while (counter < 3)(/** Block until done */)
-  }
-
-  after {
-    counter = 0
-    rcs.withClient(_.flushall)
-  }
 
 }

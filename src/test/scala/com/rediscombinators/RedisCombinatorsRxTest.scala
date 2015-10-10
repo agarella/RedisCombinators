@@ -1,47 +1,42 @@
 package com.rediscombinators
 
 import com.redis.RedisClientPool
+import com.rediscombinators.RedisRxOps._
+import com.rediscombinators.RedisSyncOps._
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{DoNotDiscover, BeforeAndAfter, GivenWhenThen, FeatureSpec}
+import org.scalatest.{FeatureSpec, GivenWhenThen}
 import rx.lang.scala.Observer
 
+import scala.util.Try
 import scalaz.Scalaz._
 
-import scala.util.Try
+class RedisCombinatorsRxTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-@DoNotDiscover
-class RedisCombinatorsRxTest extends FeatureSpec with GivenWhenThen with BeforeAndAfter with MockitoSugar {
+  val rcs = new RedisClientPool("localhost", 6379)
+  val kvs = (1 to 100).map(x => s"$x" -> s"$x").toList
 
-  val rcs = new RedisClientPool("127.0.0.1", 6379)
+  @volatile var ks = kvs.toMap.keys.toSet
   @volatile var done = false
 
   feature("mGetRx"){
-    import RedisRxOps._
-    import RedisSyncOps._
-
-    val kvs = (1 to 100).map(x => s"$x" -> s"$x").toList
     rcs.withClient(rc => rc.mSet(kvs))
 
     val o = createObserver[String]
 
     rcs.withClient { rc =>
-      rc.mGetStream.subscribe(o)
+      rc.getKeyStream.subscribe(o)
     }
 
-    while (!done)(/** Block until done */)
+    while (!done || ks.nonEmpty)(/** Block until done */)
+    rcs.withClient(_.flushall)
   }
 
-  def createObserver[A]: Observer[A] = new Observer[A] {
-    override def onNext(value: A): Unit = println(value)
-    override def onError(error: Throwable): Unit = error.printStackTrace()
+  def createObserver[String]: Observer[String] = new Observer[String] {
+    override def onNext(value: String): Unit = ks -= value.toString
+    override def onError(error: Throwable): Unit = throw error
     override def onCompleted(): Unit = done = true
   }
 
-  def parseInt(s: String): Int = Try(Integer.parseInt(s)).toOption.orZero
-
-  after {
-    done = false
-    rcs.withClient(_.flushall)
-  }
+  private def parseInt(s: String): Int = Try(Integer.parseInt(s)).toOption.orZero
 
 }
