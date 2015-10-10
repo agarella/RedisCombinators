@@ -12,7 +12,7 @@ import scalaz.Scalaz._
 
 class RedisCombinatorsRxTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val rcs = new RedisClientPool("localhost", 6379)
+  val rcs = new RedisClientPool(Environment.host, Environment.port)
   val kvs = (1 to 100).map(x => s"$x" -> s"$x").toList
 
   @volatile var ks = kvs.toMap.keys.toSet
