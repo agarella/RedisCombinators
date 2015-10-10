@@ -7,6 +7,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.Breaks._
 import scala.util.{Failure, Success, Try}
+
 object RedisLockOps {
 
   type Lock = String
@@ -39,5 +40,6 @@ object RedisLockOps {
     }
   }
 
-  def toKey(l: Lock): String = s"lock:$l"
+  private def toKey(l: Lock): String = s"lock:$l"
+
 }
