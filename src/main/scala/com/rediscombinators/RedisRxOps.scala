@@ -13,14 +13,14 @@ object RedisRxOps {
 
   implicit class RedisRx(rc: RedisClient) {
 
-
     def getStream[A](key: String)(implicit format: Format, parse: Parse[A]): Observable[A] = Observable.from(rc.getAsync(key))
 
     // TODO test with Int
     def mGetStream[A](implicit format: Format, parse: Parse[A]): Observable[A] = mGetStream("*")
 
     // TODO test with Int
-    def mGetStream[A](pattern: String)(implicit f: Format, p: Parse[A]): Observable[A] = getKeyStream(pattern).flatMap(k => getStream(k)(f, p))
+    def mGetStream[A](pattern: String)(implicit f: Format, p: Parse[A]): Observable[A] =
+      getKeyStream(pattern).flatMap(k => getStream(k)(f, p))
 
     def getKeyStream: Observable[String] = getKeyStream("*")
 
