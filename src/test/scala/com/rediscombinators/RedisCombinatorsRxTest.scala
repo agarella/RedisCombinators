@@ -7,7 +7,11 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FeatureSpec, GivenWhenThen}
 import rx.lang.scala.Observer
 
-import scala.util.Try
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
+import scala.util.{Failure, Try}
 import scalaz.Scalaz._
 
 class RedisCombinatorsRxTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
@@ -18,16 +22,25 @@ class RedisCombinatorsRxTest extends FeatureSpec with GivenWhenThen with Mockito
   @volatile var ks = kvs.toMap.keys.toSet
   @volatile var done = false
 
-  feature("mGetRx"){
+  feature("getKeyStream"){
+    Given("a redis client")
     rcs.withClient(rc => rc.mSet(kvs))
 
+    And("an observer")
     val o = createObserver[String]
 
+    When("subscribing to the stream")
     rcs.withClient { rc =>
       rc.getKeyStream.subscribe(o)
     }
 
-    while (!done || ks.nonEmpty)(/** Block until done */)
+    Then("All values should be processed")
+    Try { Await.result(Future(while (!done || ks.nonEmpty)(/** Block until done */)), 10 seconds) } match {
+      case Failure(e) =>
+        rcs.withClient(_.flushall)
+        fail("Test failed!", e)
+      case _          => ()
+    }
     rcs.withClient(_.flushall)
   }
 

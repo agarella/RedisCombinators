@@ -23,17 +23,17 @@ class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with Mocki
     val uuid = UUID.randomUUID().toString
 
     When("acquiring locks")
+    And("a calculation throws an exception while having the lock")
     Then("only one calculation should have the lock")
+    And("no deadlock occurs")
     acquireLockAndPrintSomething(uuid)
-
-    When("a calculation throws an exception while having the lock")
     acquireLockAndThrowException(uuid)
-
-    Then("no deadlock occurs")
     acquireLockAndPrintSomething(uuid)
 
     Try(Await.result(Future { while (counter < 3)(/** Block until done */) }, 10 seconds)) match {
-      case Failure(e) => fail("Test failed!", e)
+      case Failure(e) =>
+        rcs.withClient(_.flushall)
+        fail("Test failed!", e)
       case _          => ()
     }
     rcs.withClient(_.flushall)

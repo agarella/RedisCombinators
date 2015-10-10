@@ -7,7 +7,10 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FeatureSpec, GivenWhenThen}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 class RedisCombinatorsAsyncTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
@@ -32,7 +35,12 @@ class RedisCombinatorsAsyncTest extends FeatureSpec with GivenWhenThen with Mock
       }
     }
 
-    while (!done)(/** Block until done */)
+    Try { Await.result(Future(while (!done)(/** Block until done */)), 10 seconds)} match {
+      case Failure(e) =>
+        rcs.withClient(_.flushall)
+        fail("Test failed!", e)
+      case _          => ()
+    }
     rcs.withClient(_.flushall)
   }
 
