@@ -15,7 +15,7 @@ import scala.util.{Failure, Try}
 
 class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val rcs = new RedisClientPool(Environment.host, Environment.port)
+  val rcs = new RedisClientPool(Environment.host, Environment.port, secret = Environment.password)
   @volatile var counter = 0
 
   feature("RedisLock") {

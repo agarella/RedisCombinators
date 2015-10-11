@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 class RedisCombinatorsAsyncTest extends FeatureSpec with GivenWhenThen with MockitoSugar {
 
-  val rcs = new RedisClientPool(Environment.host, Environment.port)
+  val rcs = new RedisClientPool(Environment.host, Environment.port, secret = Environment.password)
   @volatile var done = false
 
   feature("getKeysAsync") {
