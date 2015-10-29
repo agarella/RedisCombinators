@@ -14,7 +14,7 @@ object RedisRxOps {
 
   implicit class RedisRx(rc: RedisClient) {
 
-    def eventStream(key: String): Observable[String] = Observable[String] { subscriber =>
+    def keyEventStream(key: String): Observable[String] = Observable[String] { subscriber =>
       Future {
         rc.subscribe(s"__keyspace@0__:$key") {
           case M(c, m) => subscriber.onNext(m)
@@ -24,10 +24,20 @@ object RedisRxOps {
       }
     }
 
-    def eventStream: Observable[(String, String)] = Observable[(String, String)] { subscriber =>
+    def keyEventStream: Observable[(String, String)] = Observable[(String, String)] { subscriber =>
       Future {
         rc.pSubscribe("__keyspace@0__:*") {
           case M(c, m) => subscriber.onNext((c.split(":").last, m))
+          case E(e)    => subscriber.onError(e)
+          case _       =>
+        }
+      }
+    }
+
+    def subscribeStream(channel: String) = Observable[String] { subscriber =>
+      Future {
+        rc.subscribe(channel) {
+          case M(c, m) => subscriber.onNext(m)
           case E(e)    => subscriber.onError(e)
           case _       =>
         }
