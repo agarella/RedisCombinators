@@ -17,7 +17,7 @@ object RedisLockOps {
     def withLock[B](l: Lock)(f: Unit => B)(implicit format: Format): B = {
       while (!rc.setnx(toKey(l), l)) Thread.sleep(250)
       @volatile var done = false
-      setExpiry(l, done)(rc)
+      setExpiration(l, done)(rc)
       val res = Try { f() } match {
         case Success(s) => s
         case Failure(e) =>
@@ -30,7 +30,7 @@ object RedisLockOps {
     }
   }
 
-  private def setExpiry(l: Lock, done: Boolean)(rc: RedisClient): Future[Unit] = Future {
+  private def setExpiration(l: Lock, done: Boolean)(rc: RedisClient): Future[Unit] = Future {
     rc.expire(toKey(l), 2)
     breakable {
       while (!done) {
