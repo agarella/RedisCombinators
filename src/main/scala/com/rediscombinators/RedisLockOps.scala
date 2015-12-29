@@ -14,11 +14,11 @@ object RedisLockOps {
 
   implicit class RedisLock(rc: RedisClient) {
 
-    def withLock[B](l: Lock)(f: Unit => B)(implicit format: Format): B = {
+    def withLock[B](l: Lock)(body: => B)(implicit format: Format): B = {
       while (!rc.setnx(toKey(l), l)) Thread.sleep(250)
       @volatile var done = false
       setExpiration(l, done)(rc)
-      val res = Try { f() } match {
+      val res = Try { body } match {
         case Success(s) => s
         case Failure(e) =>
           done = true
