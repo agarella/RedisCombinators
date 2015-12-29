@@ -14,7 +14,7 @@ object RedisLockOps {
 
   implicit class RedisLock(rc: RedisClient) {
 
-    def withLock[B](l: Lock)(body: => B)(implicit format: Format, duration: Int): B = {
+    def withLock[B](l: Lock)(body: => B)(implicit format: Format): B = {
       while (!rc.setnx(toKey(l), l)) Thread.sleep(250)
       @volatile var done = false
       setExpiration(l, done)(rc)
