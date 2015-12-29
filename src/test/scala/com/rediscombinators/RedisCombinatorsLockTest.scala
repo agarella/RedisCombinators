@@ -55,7 +55,7 @@ class RedisCombinatorsLockTest extends FeatureSpec with GivenWhenThen with Mocki
   def acquireLockAndThrowException(lock: Lock): Future[Unit] =
   Future {
       rcs.withClient { client =>
-        client.withLock(lock) { _ =>
+        client.withLock(lock) {
           println("Acquired lock")
           Thread.sleep(1000)
           println("GOING TO DIE!")
